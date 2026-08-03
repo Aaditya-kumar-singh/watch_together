@@ -1,4 +1,4 @@
-# Dependency directories
+# Dependencies
 node_modules/
 
 # Build outputs
@@ -6,8 +6,9 @@ dist/
 .next/
 out/
 build/
+*.tsbuildinfo
 
-# IDE files
+# IDE
 .vscode/
 .idea/
 *.suo
@@ -16,7 +17,7 @@ build/
 *.sln
 *.sw?
 
-# System Files
+# System
 .DS_Store
 Thumbs.db
 
@@ -28,6 +29,15 @@ Thumbs.db
 .env.production.local
 .env.*.local
 
-# Graphify files
-graphify-out/cost.json
-# graphify-out/cache/
+# AI tooling & workspace config (not part of the project)
+agent/
+.agents/
+.claude/
+.graphifyignore
+.gitattributes
+skills-lock.json
+graphify-out/
+
+# Assignment reference files (not for submission)
+assignment.txt
+preparation.txt
