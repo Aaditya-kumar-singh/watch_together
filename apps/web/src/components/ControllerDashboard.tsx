@@ -24,6 +24,15 @@ export default function ControllerDashboard() {
 
   const [driftHistory, setDriftHistory] = useState<any[]>([]);
   const [videos, setVideos] = useState<any[]>([]);
+  const [customUrl, setCustomUrl] = useState<string>('');
+
+  const handleCustomUrlSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (customUrl.trim()) {
+      changeVideo(customUrl.trim());
+      setCustomUrl('');
+    }
+  };
 
   const SERVER_URL = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:4000';
 
@@ -169,6 +178,26 @@ export default function ControllerDashboard() {
                 </button>
               ))}
             </div>
+
+            {/* Custom Video URL Input */}
+            <form onSubmit={handleCustomUrlSubmit} className="mt-2 flex flex-col sm:flex-row gap-2 border-t border-slate-800/60 pt-4">
+              <div className="flex-1 relative">
+                <input
+                  type="url"
+                  placeholder="Paste custom MP4 video link (e.g., https://example.com/movie.mp4)..."
+                  value={customUrl}
+                  onChange={(e) => setCustomUrl(e.target.value)}
+                  className="w-full bg-slate-950/60 border border-slate-800 hover:border-slate-700 focus:border-indigo-500 rounded-xl px-4 py-2.5 text-xs text-slate-200 outline-none transition-all placeholder:text-slate-600 font-mono"
+                  required
+                />
+              </div>
+              <button
+                type="submit"
+                className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-extrabold px-5 py-2.5 rounded-xl transition-all shadow-[0_0_12px_rgba(99,102,241,0.2)] cursor-pointer"
+              >
+                PLAY URL
+              </button>
+            </form>
           </div>
 
           {/* Master Timeline & Transport Control */}

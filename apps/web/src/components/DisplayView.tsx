@@ -145,6 +145,7 @@ export default function DisplayView({ clientId }: DisplayViewProps) {
         playbackState: state,
         latency,
         timestamp: Date.now(),
+        duration: video.duration || undefined,
       });
       setHeartbeatCount(prev => prev + 1);
 

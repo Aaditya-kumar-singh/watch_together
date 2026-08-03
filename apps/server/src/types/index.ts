@@ -48,6 +48,7 @@ export interface HeartbeatPayload {
   latency: number;                 // measured RTT by client or ping
   timestamp: number;               // client-side timestamp when sent
   fps?: number;
+  duration?: number;
 }
 
 // ─── Zod Validation Schemas ──────────────────────────────────────────
@@ -60,6 +61,7 @@ export const HeartbeatPayloadSchema = z.object({
   latency: z.number().min(0),
   timestamp: z.number().positive(),
   fps: z.number().min(0).optional(),
+  duration: z.number().min(0).optional(),
 });
 
 export const SeekPayloadSchema = z.number().min(0);

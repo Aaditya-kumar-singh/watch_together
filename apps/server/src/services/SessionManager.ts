@@ -128,7 +128,22 @@ export class SessionManager {
   }
 
   public changeVideo(videoId: string): void {
-    const video = PREDEFINED_VIDEOS.find(v => v.id === videoId);
+    let video = PREDEFINED_VIDEOS.find(v => v.id === videoId);
+
+    // If not in predefined list, check if it's a URL
+    if (!video && (videoId.startsWith('http://') || videoId.startsWith('https://'))) {
+      const urlParts = videoId.split('/');
+      const fileName = urlParts[urlParts.length - 1] || 'custom-video.mp4';
+      // Clean up file extension for the title
+      const title = fileName.split('?')[0].replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
+      video = {
+        id: videoId,
+        title: (title.charAt(0).toUpperCase() + title.slice(1)) || 'Custom Video Link',
+        url: videoId,
+        duration: 1800 // Default placeholder, will auto-correct on client load
+      };
+    }
+
     if (video) {
       this.session.selectedVideo = video;
       this.session.authoritativePosition = 0;
@@ -184,7 +199,7 @@ export class SessionManager {
   }
 
   public handleHeartbeat(payload: HeartbeatPayload, socketId: string): void {
-    const { clientId, currentPosition, buffered, playbackState, latency, fps } = payload;
+    const { clientId, currentPosition, buffered, playbackState, latency, fps, duration } = payload;
     let display = this.displays.get(clientId);
 
     if (!display) {
@@ -203,6 +218,12 @@ export class SessionManager {
     display.latency = latency;
     display.connectionQuality = this.computeConnectionQuality(latency);
     if (fps !== undefined) display.fps = fps;
+
+    // Update session duration if client reports a valid duration for a custom video link
+    if (duration && this.session.selectedVideo.id === this.session.selectedVideo.url && duration !== this.session.selectedVideo.duration) {
+      this.session.selectedVideo.duration = Math.ceil(duration);
+      this.touch();
+    }
 
     // Calculate drift: client currentPosition − expected authoritativePosition
     const expected = this.getExpectedPosition();
