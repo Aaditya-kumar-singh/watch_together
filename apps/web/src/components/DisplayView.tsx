@@ -24,11 +24,12 @@ export default function DisplayView({ clientId }: DisplayViewProps) {
   const [drift, setDrift] = useState<number>(0);
   const [latency, setLatency] = useState<number>(0);
   const [playbackRate, setPlaybackRate] = useState<number>(1.0);
-  const [syncStatus, setSyncStatus] = useState<'in-sync' | 'soft' | 'hard' | 'cooldown'>('in-sync');
+  const [syncStatus, setSyncStatus] = useState<'in-sync' | 'soft' | 'hard' | 'cooldown' | 'seeking' | 'buffering'>('in-sync');
   const [expectedPos, setExpectedPos] = useState<number>(0);
   const [isMuted, setIsMuted] = useState<boolean>(true);
   const [heartbeatCount, setHeartbeatCount] = useState<number>(0);
   const [lastCorrection, setLastCorrection] = useState<string>('—');
+  const [videoError, setVideoError] = useState<string | null>(null);
 
   // Lock corrections after a hard seek to let player buffer
   const cooldownRef = useRef<boolean>(false);
@@ -82,6 +83,7 @@ export default function DisplayView({ clientId }: DisplayViewProps) {
       addLog('info', `Loading video: ${session.selectedVideo.title}`);
       video.src = session.selectedVideo.url;
       video.load();
+      setVideoError(null); // Reset error state on source change
       lastSequenceRef.current = -1;
     }
 
@@ -128,19 +130,36 @@ export default function DisplayView({ clientId }: DisplayViewProps) {
         bufferedEnd = video.buffered.end(video.buffered.length - 1);
       }
 
+      let state: 'playing' | 'paused' | 'buffering' = 'paused';
+      if (video.seeking || video.readyState < 3) {
+        state = 'buffering';
+      } else if (!video.paused) {
+        state = 'playing';
+      }
+
       sendHeartbeat({
         clientId,
         currentPosition: video.currentTime,
         buffered: bufferedEnd,
-        playbackState: video.paused ? 'paused' : 'playing',
+        playbackState: state,
         latency,
         timestamp: Date.now(),
       });
       setHeartbeatCount(prev => prev + 1);
 
-      // 4. Drift Correction Algorithm (skip if in cooldown)
+      // 4. Drift Correction Algorithm (skip if in cooldown, seeking, or buffering)
       if (cooldownRef.current) {
         setSyncStatus('cooldown');
+        return;
+      }
+
+      if (video.seeking) {
+        setSyncStatus('seeking');
+        return;
+      }
+
+      if (video.readyState < 3) {
+        setSyncStatus('buffering');
         return;
       }
 
@@ -198,6 +217,10 @@ export default function DisplayView({ clientId }: DisplayViewProps) {
         return <ShieldAlert className="text-rose-500 animate-bounce" size={16} />;
       case 'cooldown':
         return <RefreshCw className="text-cyan-400 animate-spin" size={16} />;
+      case 'seeking':
+        return <RefreshCw className="text-blue-400 animate-spin" size={16} />;
+      case 'buffering':
+        return <Activity className="text-amber-500 animate-pulse" size={16} />;
     }
   };
 
@@ -207,6 +230,8 @@ export default function DisplayView({ clientId }: DisplayViewProps) {
       case 'soft': return 'text-amber-400';
       case 'hard': return 'text-rose-500';
       case 'cooldown': return 'text-cyan-400';
+      case 'seeking': return 'text-blue-400';
+      case 'buffering': return 'text-amber-500';
     }
   };
 
@@ -219,6 +244,20 @@ export default function DisplayView({ clientId }: DisplayViewProps) {
         playsInline
         muted={isMuted}
         loop={false}
+        onError={(e) => {
+          const err = videoRef.current?.error;
+          let errMsg = 'Unknown error';
+          if (err) {
+            switch (err.code) {
+              case 1: errMsg = 'Media playback aborted by user'; break;
+              case 2: errMsg = 'Network error while loading video'; break;
+              case 3: errMsg = 'Video decoding failed'; break;
+              case 4: errMsg = 'Video format/source not supported or blocked'; break;
+            }
+          }
+          setVideoError(errMsg);
+          addLog('error', `Video Load Error: ${errMsg}`);
+        }}
       />
 
       {/* Unmute Button (browser autoplay policy) */}
@@ -315,6 +354,12 @@ export default function DisplayView({ clientId }: DisplayViewProps) {
             </span>
           </div>
         </div>
+
+        {videoError && (
+          <div className="mt-2 p-2 bg-rose-500/20 border border-rose-500/30 rounded-xl text-[10px] text-rose-400 font-bold uppercase tracking-wider text-center">
+            ⚠️ {videoError}
+          </div>
+        )}
 
         {/* Buffer Health Bar */}
         <div className="mt-4 pt-3 border-t border-slate-800 flex flex-col gap-2">
