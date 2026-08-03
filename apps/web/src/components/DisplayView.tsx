@@ -106,7 +106,7 @@ export default function DisplayView({ clientId }: DisplayViewProps) {
       }
       lastSequenceRef.current = session.sequenceNumber;
     }
-  }, [session]);
+  }, [session, isMounted, calculateExpectedPosition, triggerCooldown]);
 
   // ── Heartbeat & Drift Correction Loop (250ms) ─────────────────────
   useEffect(() => {
