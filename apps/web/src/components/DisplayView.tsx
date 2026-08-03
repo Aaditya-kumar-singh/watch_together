@@ -30,6 +30,7 @@ export default function DisplayView({ clientId }: DisplayViewProps) {
   const [heartbeatCount, setHeartbeatCount] = useState<number>(0);
   const [lastCorrection, setLastCorrection] = useState<string>('—');
   const [videoError, setVideoError] = useState<string | null>(null);
+  const [isHudMinimized, setIsHudMinimized] = useState<boolean>(false);
 
   // Lock corrections after a hard seek to let player buffer
   const cooldownRef = useRef<boolean>(false);
@@ -274,18 +275,44 @@ export default function DisplayView({ clientId }: DisplayViewProps) {
       )}
 
       {/* ── Glassmorphism Diagnostic HUD Overlay ──────────────────────── */}
-      <div className="absolute bottom-6 left-6 right-6 md:right-auto md:w-[420px] z-40 bg-slate-950/85 backdrop-blur-md border border-slate-800 rounded-2xl p-5 shadow-2xl font-mono text-white select-none">
-
-        {/* HUD Header */}
-        <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-3">
-          <div className="flex items-center gap-2">
-            <span className={`w-2.5 h-2.5 rounded-full ${isConnected ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`} />
-            <span className="text-xs font-bold text-slate-300">DISPLAY TELEMETRY</span>
+      <div className={`absolute bottom-6 left-6 right-6 md:right-auto z-40 bg-slate-950/85 backdrop-blur-md border border-slate-800 rounded-2xl p-4 shadow-2xl font-mono text-white select-none transition-all duration-300 ${isHudMinimized ? 'md:w-[260px] w-auto' : 'md:w-[420px] w-auto'}`}>
+        
+        {isHudMinimized ? (
+          <div 
+            className="flex items-center justify-between text-xs cursor-pointer hover:bg-slate-900/40 p-1 rounded-lg transition-all"
+            onClick={() => setIsHudMinimized(false)}
+          >
+            <div className="flex items-center gap-2">
+              <span className={`w-2.5 h-2.5 rounded-full ${isConnected ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`} />
+              <span className="font-bold text-slate-300 text-[10px]">{clientId}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className={`text-[9px] font-extrabold uppercase ${getSyncStatusColor()}`}>
+                {syncStatus}
+              </span>
+              <span className="text-[8px] text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-1 py-0.5 rounded font-bold uppercase tracking-wider">
+                EXPAND
+              </span>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] text-slate-500 bg-slate-900 px-2 py-0.5 rounded">{clientId}</span>
-          </div>
-        </div>
+        ) : (
+          <>
+            {/* HUD Header */}
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-3">
+              <div className="flex items-center gap-2">
+                <span className={`w-2.5 h-2.5 rounded-full ${isConnected ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`} />
+                <span className="text-xs font-bold text-slate-300">DISPLAY TELEMETRY</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-slate-500 bg-slate-900 px-2 py-0.5 rounded">{clientId}</span>
+                <button 
+                  onClick={() => setIsHudMinimized(true)}
+                  className="text-[9px] text-slate-400 hover:text-slate-200 font-extrabold px-1.5 py-0.5 rounded bg-slate-900 border border-slate-800 cursor-pointer transition-all"
+                >
+                  MINIMIZE
+                </button>
+              </div>
+            </div>
 
         {/* HUD Data Grid */}
         <div className="flex flex-col gap-2 text-[11px] leading-relaxed">
@@ -299,16 +326,16 @@ export default function DisplayView({ clientId }: DisplayViewProps) {
           <div className="flex justify-between border-b border-slate-900 pb-1.5">
             <span className="text-slate-500 uppercase">Local Position</span>
             <span className="text-slate-200 font-bold">
-              {formatTime(videoRef.current?.currentTime || 0)}{' '}
-              <span className="text-[10px] text-slate-500">({(videoRef.current?.currentTime || 0).toFixed(2)}s)</span>
+              {formatTime(videoRef.current?.currentTime || 0)}
+              <span className="text-[10px] text-slate-500 hidden sm:inline"> ({(videoRef.current?.currentTime || 0).toFixed(2)}s)</span>
             </span>
           </div>
 
           <div className="flex justify-between border-b border-slate-900 pb-1.5">
             <span className="text-slate-500 uppercase">Expected Position</span>
             <span className="text-slate-200 font-bold">
-              {formatTime(expectedPos)}{' '}
-              <span className="text-[10px] text-slate-500">({expectedPos.toFixed(2)}s)</span>
+              {formatTime(expectedPos)}
+              <span className="text-[10px] text-slate-500 hidden sm:inline"> ({expectedPos.toFixed(2)}s)</span>
             </span>
           </div>
 
@@ -385,6 +412,8 @@ export default function DisplayView({ clientId }: DisplayViewProps) {
             />
           </div>
         </div>
+          </>
+        )}
       </div>
     </div>
   );

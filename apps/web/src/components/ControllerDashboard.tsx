@@ -179,12 +179,12 @@ export default function ControllerDashboard() {
             </h2>
 
             {/* Video Meta Info */}
-            <div className="bg-slate-950/60 border border-slate-800/80 px-4 py-3 rounded-xl flex items-center justify-between">
+            <div className="bg-slate-950/60 border border-slate-800/80 px-4 py-3 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-0">
               <div>
                 <div className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Currently Playing</div>
                 <div className="font-bold text-slate-200">{session?.selectedVideo?.title || 'None Selected'}</div>
               </div>
-              <div className="text-right">
+              <div className="text-left sm:text-right">
                 <div className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Sequence</div>
                 <div className="font-bold text-indigo-400 font-mono">{session?.sequenceNumber ?? 0}</div>
               </div>
