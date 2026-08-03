@@ -30,3 +30,11 @@ Trigger on: requests to build strategic presentation slide decks, outlines, or H
 ## ui-styling
 Trigger on: user interface design, shadcn/ui components (Radix + Tailwind), Tailwind CSS styling, responsive layout designs, theme/color customization, or dark mode.
 - Consult [.agents/skills/ui-styling/SKILL.md](file:///.agents/skills/ui-styling/SKILL.md) to implement beautiful, accessible UI components and responsive styling patterns.
+
+## clerk-nextjs-patterns
+Trigger on: requests involving Next.js user authentication, Clerk integration, middleware, Server Actions with authentication, or caching with Clerk.
+- Consult [.agents/skills/clerk-nextjs-patterns/SKILL.md](file:///c:/Users/WHITE-SNAKE/Desktop/Assignment/.agents/skills/clerk-nextjs-patterns/SKILL.md) for advanced Next.js patterns with Clerk.
+
+## nextjs-app-router-patterns
+Trigger on: building or optimizing Next.js 14+ App Router applications, structuring layouts/routes, rendering strategies (SSR, SSG, ISR), or data fetching in Server Components.
+- Consult [.agents/skills/nextjs-app-router-patterns/SKILL.md](file:///c:/Users/WHITE-SNAKE/Desktop/Assignment/.agents/skills/nextjs-app-router-patterns/SKILL.md) for Server Components and App Router structure patterns.
