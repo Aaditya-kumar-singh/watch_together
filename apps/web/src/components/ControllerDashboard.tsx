@@ -304,8 +304,10 @@ export default function ControllerDashboard() {
                     <div className="flex items-center justify-between border-b border-slate-800/60 pb-2">
                       <span className="font-mono text-xs font-bold text-indigo-400">{display.clientId}</span>
                       <div className="flex items-center gap-1.5">
-                        <div className={`w-2 h-2 rounded-full ${getDriftStatusColor(display.drift)}`} />
-                        <span className="text-[10px] text-slate-400 font-bold uppercase">{getDriftStatusLabel(display.drift)}</span>
+                        <div className={`w-2 h-2 rounded-full ${display.connectionStatus === 'connected' ? getDriftStatusColor(display.drift) : 'bg-red-500'}`} />
+                        <span className="text-[10px] text-slate-400 font-bold uppercase">
+                          {display.connectionStatus === 'connected' ? getDriftStatusLabel(display.drift) : 'offline'}
+                        </span>
                       </div>
                     </div>
 
@@ -333,10 +335,10 @@ export default function ControllerDashboard() {
 
                     {/* Status Footer */}
                     <div className="flex items-center justify-between bg-slate-900 border border-slate-800/60 px-3 py-1.5 rounded-lg text-[10px] font-bold text-slate-400">
-                      <span>STATE: <span className="text-slate-200 uppercase">{display.playbackState}</span></span>
+                      <span>STATE: <span className="text-slate-200 uppercase">{display.connectionStatus === 'connected' ? display.playbackState : 'offline'}</span></span>
                       <span className="flex items-center gap-1">
-                        <div className={`w-1.5 h-1.5 rounded-full ${getQualityColor(display.connectionQuality)}`} />
-                        <span>{getQualityLabel(display.connectionQuality)}</span>
+                        <div className={`w-1.5 h-1.5 rounded-full ${display.connectionStatus === 'connected' ? getQualityColor(display.connectionQuality) : 'bg-red-500'}`} />
+                        <span>{display.connectionStatus === 'connected' ? getQualityLabel(display.connectionQuality) : 'offline'}</span>
                       </span>
                       <span>HB: <span className="text-slate-200">{getTimeSince(display.lastHeartbeat)}</span></span>
                     </div>

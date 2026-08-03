@@ -1,14 +1,27 @@
 'use client';
 
-import React, { Suspense } from 'react';
+import React, { Suspense, useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import DisplayView from '../../components/DisplayView';
 
 function DisplayContent() {
   const searchParams = useSearchParams();
-  const id = searchParams.get('id') || `display-${Math.floor(1000 + Math.random() * 9000)}`;
+  const [clientId, setClientId] = useState<string | null>(null);
 
-  return <DisplayView clientId={id} />;
+  useEffect(() => {
+    const id = searchParams.get('id') || `display-${Math.floor(1000 + Math.random() * 9000)}`;
+    setClientId(id);
+  }, [searchParams]);
+
+  if (!clientId) {
+    return (
+      <div className="bg-black text-slate-500 font-mono flex h-screen items-center justify-center text-xs">
+        Bootstrapping display interface...
+      </div>
+    );
+  }
+
+  return <DisplayView clientId={clientId} />;
 }
 
 export default function DisplayPage() {

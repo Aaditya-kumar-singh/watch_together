@@ -34,7 +34,10 @@ export default function DisplayView({ clientId }: DisplayViewProps) {
   const cooldownRef = useRef<boolean>(false);
   const lastSequenceRef = useRef<number>(-1);
 
+  const [isMounted, setIsMounted] = useState<boolean>(false);
+
   useEffect(() => {
+    setIsMounted(true);
     initializeSocket();
     registerDisplay(clientId);
   }, []);
@@ -167,6 +170,16 @@ export default function DisplayView({ clientId }: DisplayViewProps) {
 
     return () => clearInterval(interval);
   }, [session, latency, calculateExpectedPosition]);
+
+  if (!isMounted) {
+    return (
+      <div className="relative w-full h-screen bg-black overflow-hidden flex flex-col justify-center items-center">
+        <div className="bg-black text-slate-500 font-mono text-xs animate-pulse">
+          Connecting to display sync session...
+        </div>
+      </div>
+    );
+  }
 
   const formatTime = (seconds: number) => {
     if (!seconds || isNaN(seconds)) return '00:00';
