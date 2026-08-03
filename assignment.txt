@@ -1,0 +1,108 @@
+# BrandContext | Assignment: Dual-App Video Sync Challenge
+
+# Real-Time Multi-Display Video Synchronisation
+
+## Overview
+
+Build a small real-time system in which a **Controller Application** manages video playback on multiple **Display Applications**.
+
+The challenge is not primarily about visual design. We are interested in how you model shared state, communicate between clients, handle imperfect networks, debug unexpected behaviour, and explain your engineering decisions.
+
+You may use AI tools and open-source libraries. We care less about how much code you type manually and more about whether you understand, verify, and can defend the solution you submit.
+
+---
+
+## Time expectation
+
+- Submit the assignment within **48 hours** of receiving it.
+- Please timebox the actual implementation to approximately **6–8 hours**.
+- A smaller, reliable solution with clearly documented trade-offs is better than a large but fragile implementation.
+- It is acceptable to leave some items incomplete. Explain what is missing, why you prioritised other work, and what you would do next.
+
+---
+
+## Objective
+
+Create a system with:
+
+- One Controller interface.
+- At least two Display clients, which may be opened in separate browser tabs or windows.
+- A real-time server or coordination layer that acts as the authoritative source of playback state.
+
+The Controller should be able to control the Displays, while the system measures and responds to differences between the expected playback position and the position reported by each Display.
+
+---
+
+## Technology and architecture
+
+You may choose an architecture that you believe is appropriate. Examples include:
+
+- A single Next.js application with separate routes such as `/controller` and `/display/:id`.
+- A frontend application with a separate Node.js/Express and Socket.IO backend.
+- Another JavaScript or TypeScript architecture that satisfies the requirements.
+
+Your architecture choice will not receive points merely for being more complex. We will evaluate how well the chosen approach fits the problem and how clearly you explain its trade-offs.
+
+The solution may run entirely on a local machine. Deployment is optional.
+
+---
+
+## Core requirements
+
+### 1) Controller application
+
+The Controller must allow a user to:
+
+- Select a video from a small predefined list.
+- Play or resume the selected video.
+- Pause the video.
+- Seek to a chosen playback position.
+- Restart the video from the beginning.
+- View all currently connected Display clients.
+- View the latest playback state reported by each Display, including:
+    - Connection status.
+    - Current playback position.
+    - Playing, paused, or loading state.
+    - Estimated drift from the expected playback position, in milliseconds.
+
+### 2) Display application
+
+Each Display must:
+
+- Connect to the real-time coordination layer and have an identifiable client ID.
+- Load the video selected by the Controller.
+- Respond to play, pause, seek, and restart actions.
+- Send regular status updates containing its current playback state and position.
+- Show basic debugging information on screen, including its client ID, connection state, local playback position, and current drift.
+
+Visual polish is welcome but is not a major evaluation criterion. A simple interface with useful diagnostics is sufficient.
+
+### 3) Authoritative playback state
+
+The server or coordination layer must maintain the authoritative state of the session, including:
+
+- Selected video.
+- Whether playback is playing or paused.
+- The authoritative playback position or the information needed to calculate it.
+- The latest version, sequence number, or timestamp of the state.
+- Connected Display clients and their latest reported status.
+
+The expected playback position should continue to advance while the session is playing and remain fixed while paused. Document how you calculate this position.
+
+### 4) Synchronisation and drift correction
+
+The system must:
+
+- Calculate the difference between the expected playback position and the position reported by each Display.
+- Show that drift on the Controller.
+- Implement at least one automatic correction strategy.
+
+For example, you may hard-seek a Display when its drift exceeds a threshold, temporarily adjust its playback rate, or use another strategy you can justify. You may choose your own thresholds and cooldown behaviour, but explain the reasoning behind them.
+
+---
+
+## Submission
+
+- Email your submission to vishaal.v@brandcontext.ai.
+- Include a **deployed link** to the working app.
+- Include a **GitHub repository link** with the code.
