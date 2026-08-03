@@ -19,6 +19,7 @@ export default function DisplayView({ clientId }: DisplayViewProps) {
   } = useStore();
 
   const videoRef = useRef<HTMLVideoElement>(null);
+  const playerRef = useRef<any>(null);
 
   // Local Telemetry State
   const [drift, setDrift] = useState<number>(0);
@@ -32,11 +33,120 @@ export default function DisplayView({ clientId }: DisplayViewProps) {
   const [videoError, setVideoError] = useState<string | null>(null);
   const [isHudMinimized, setIsHudMinimized] = useState<boolean>(false);
 
+  // YouTube States
+  const [videoType, setVideoType] = useState<'html5' | 'youtube'>('html5');
+  const [ytPlayer, setYtPlayer] = useState<any>(null);
+  const [ytReady, setYtReady] = useState<boolean>(false);
+
   // Lock corrections after a hard seek to let player buffer
   const cooldownRef = useRef<boolean>(false);
   const lastSequenceRef = useRef<number>(-1);
 
   const [isMounted, setIsMounted] = useState<boolean>(false);
+
+  // Extract YouTube Video ID from any watch link
+  const getYoutubeVideoId = (url: string): string | null => {
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+    const match = url.match(regExp);
+    return (match && match[2].length === 11) ? match[2] : null;
+  };
+
+  // Determine video type based on url
+  useEffect(() => {
+    if (!session?.selectedVideo?.url) return;
+    const isYt = !!getYoutubeVideoId(session.selectedVideo.url);
+    setVideoType(isYt ? 'youtube' : 'html5');
+  }, [session?.selectedVideo?.url]);
+
+  // Load YouTube IFrame API script dynamically
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!(window as any).YT) {
+      (window as any).onYouTubeIframeAPIReady = () => {
+        setYtReady(true);
+      };
+      const tag = document.createElement('script');
+      tag.src = 'https://www.youtube.com/iframe_api';
+      const firstScriptTag = document.getElementsByTagName('script')[0];
+      firstScriptTag?.parentNode?.insertBefore(tag, firstScriptTag);
+    } else {
+      setYtReady(true);
+    }
+  }, []);
+
+  // Initialize or update YouTube Player instance
+  useEffect(() => {
+    if (!ytReady || videoType !== 'youtube' || !session?.selectedVideo?.url) return;
+    const videoId = getYoutubeVideoId(session.selectedVideo.url);
+    if (!videoId) return;
+
+    if (playerRef.current) {
+      try {
+        if (playerRef.current.getVideoData && playerRef.current.getVideoData().video_id !== videoId) {
+          playerRef.current.cueVideoById({ videoId });
+        }
+      } catch (err) {
+        console.error("Error cueing YouTube video:", err);
+      }
+    } else {
+      try {
+        playerRef.current = new (window as any).YT.Player('yt-player-placeholder', {
+          videoId: videoId,
+          playerVars: {
+            autoplay: 0,
+            controls: 0,
+            disablekb: 1,
+            fs: 0,
+            rel: 0,
+            showinfo: 0,
+            modestbranding: 1,
+            iv_load_policy: 3,
+            enablejsapi: 1,
+          },
+          events: {
+            onReady: (event: any) => {
+              setYtPlayer(event.target);
+              if (isMuted) {
+                event.target.mute();
+              } else {
+                event.target.unMute();
+              }
+            },
+            onError: (event: any) => {
+              const errCode = event.data;
+              let errMsg = 'YouTube load error';
+              switch (errCode) {
+                case 2: errMsg = 'Invalid YouTube video ID'; break;
+                case 5: errMsg = 'YouTube HTML5 player error'; break;
+                case 100: errMsg = 'YouTube video not found / removed'; break;
+                case 101:
+                case 150: errMsg = 'YouTube video embedding blocked by creator'; break;
+              }
+              setVideoError(errMsg);
+              addLog('error', `YT Player Error: ${errMsg}`);
+            }
+          }
+        });
+      } catch (e) {
+        console.error("Failed to create YT Player:", e);
+      }
+    }
+  }, [ytReady, videoType, session?.selectedVideo?.url]);
+
+  // Handle switching players (pause the inactive player)
+  useEffect(() => {
+    if (videoType === 'html5') {
+      if (ytPlayer && ytPlayer.pauseVideo) {
+        try {
+          ytPlayer.pauseVideo();
+        } catch (e) {}
+      }
+    } else {
+      if (videoRef.current) {
+        videoRef.current.pause();
+      }
+    }
+  }, [videoType, ytPlayer]);
 
   useEffect(() => {
     setIsMounted(true);
@@ -61,91 +171,208 @@ export default function DisplayView({ clientId }: DisplayViewProps) {
     setLastCorrection(new Date().toLocaleTimeString());
     setTimeout(() => {
       cooldownRef.current = false;
-      if (videoRef.current) {
-        videoRef.current.playbackRate = 1.0;
-        setPlaybackRate(1.0);
+      if (videoType === 'youtube') {
+        if (playerRef.current && playerRef.current.setPlaybackRate) {
+          try {
+            playerRef.current.setPlaybackRate(1.0);
+          } catch (e) {}
+        }
+      } else {
+        if (videoRef.current) {
+          videoRef.current.playbackRate = 1.0;
+        }
       }
+      setPlaybackRate(1.0);
     }, ms);
-  }, []);
+  }, [videoType]);
+
+  // Unified Player Adapter
+  const player = {
+    isYt: videoType === 'youtube',
+    
+    isReady: (): boolean => {
+      if (videoType === 'youtube') {
+        return !!(ytPlayer && ytPlayer.getPlayerState);
+      }
+      return !!(videoRef.current && isMounted);
+    },
+
+    play: async () => {
+      if (videoType === 'youtube') {
+        if (ytPlayer && ytPlayer.playVideo) ytPlayer.playVideo();
+      } else {
+        if (videoRef.current) await videoRef.current.play().catch(() => {});
+      }
+    },
+
+    pause: () => {
+      if (videoType === 'youtube') {
+        if (ytPlayer && ytPlayer.pauseVideo) ytPlayer.pauseVideo();
+      } else {
+        if (videoRef.current) videoRef.current.pause();
+      }
+    },
+
+    seek: (seconds: number) => {
+      if (videoType === 'youtube') {
+        if (ytPlayer && ytPlayer.seekTo) ytPlayer.seekTo(seconds, true);
+      } else {
+        if (videoRef.current) videoRef.current.currentTime = seconds;
+      }
+    },
+
+    getCurrentTime: (): number => {
+      if (videoType === 'youtube') {
+        return (ytPlayer && ytPlayer.getCurrentTime) ? ytPlayer.getCurrentTime() : 0;
+      }
+      return videoRef.current ? videoRef.current.currentTime : 0;
+    },
+
+    getDuration: (): number => {
+      if (videoType === 'youtube') {
+        return (ytPlayer && ytPlayer.getDuration) ? ytPlayer.getDuration() : 0;
+      }
+      return videoRef.current ? videoRef.current.duration : 0;
+    },
+
+    getBufferedEnd: (): number => {
+      if (videoType === 'youtube') {
+        if (ytPlayer && ytPlayer.getVideoLoadedFraction && ytPlayer.getDuration) {
+          return ytPlayer.getVideoLoadedFraction() * ytPlayer.getDuration();
+        }
+        return 0;
+      }
+      if (videoRef.current && videoRef.current.buffered.length > 0) {
+        return videoRef.current.buffered.end(videoRef.current.buffered.length - 1);
+      }
+      return 0;
+    },
+
+    setPlaybackRate: (rate: number) => {
+      if (videoType === 'youtube') {
+        if (ytPlayer && ytPlayer.setPlaybackRate) ytPlayer.setPlaybackRate(rate);
+      } else {
+        if (videoRef.current) videoRef.current.playbackRate = rate;
+      }
+    },
+
+    getPlaybackRate: (): number => {
+      if (videoType === 'youtube') {
+        return (ytPlayer && ytPlayer.getPlaybackRate) ? ytPlayer.getPlaybackRate() : 1.0;
+      }
+      return videoRef.current ? videoRef.current.playbackRate : 1.0;
+    },
+
+    isPaused: (): boolean => {
+      if (videoType === 'youtube') {
+        if (ytPlayer && ytPlayer.getPlayerState) {
+          const state = ytPlayer.getPlayerState();
+          return state === 2 || state === 5 || state === -1 || state === 0;
+        }
+        return true;
+      }
+      return videoRef.current ? videoRef.current.paused : true;
+    },
+
+    isBufferingOrSeeking: (): boolean => {
+      if (videoType === 'youtube') {
+        if (ytPlayer && ytPlayer.getPlayerState) {
+          const state = ytPlayer.getPlayerState();
+          return state === 3; // 3 is buffering
+        }
+        return false;
+      }
+      return videoRef.current ? (videoRef.current.seeking || videoRef.current.readyState < 3) : false;
+    },
+
+    mute: (muted: boolean) => {
+      if (videoType === 'youtube') {
+        if (ytPlayer) {
+          if (muted && ytPlayer.mute) ytPlayer.mute();
+          if (!muted && ytPlayer.unMute) ytPlayer.unMute();
+        }
+      } else {
+        if (videoRef.current) videoRef.current.muted = muted;
+      }
+    }
+  };
 
   // ── Sync with authoritative session state ──────────────────────────
   useEffect(() => {
-    if (!session || !videoRef.current) return;
-    const video = videoRef.current;
+    if (!session || !player.isReady()) return;
 
     // Estimate network latency from server timestamp
     if (session.serverTimestamp) {
       setLatency(Math.max(0, Date.now() - session.serverTimestamp));
     }
 
-    // 1. Video source change detection
-    const currentSrc = video.src;
-    if (session.selectedVideo && !currentSrc.includes(session.selectedVideo.url)) {
-      addLog('info', `Loading video: ${session.selectedVideo.title}`);
-      video.src = session.selectedVideo.url;
-      video.load();
-      setVideoError(null); // Reset error state on source change
-      lastSequenceRef.current = -1;
+    // 1. HTML5 Video source change detection
+    if (videoType === 'html5' && videoRef.current) {
+      const video = videoRef.current;
+      const currentSrc = video.src;
+      if (session.selectedVideo && !currentSrc.includes(session.selectedVideo.url)) {
+        addLog('info', `Loading video: ${session.selectedVideo.title}`);
+        video.src = session.selectedVideo.url;
+        video.load();
+        setVideoError(null);
+        lastSequenceRef.current = -1;
+      }
     }
 
     // 2. Play/Pause sync
-    if (session.isPlaying && video.paused) {
-      video.play().catch(() => {});
+    if (session.isPlaying && player.isPaused()) {
+      player.play();
       addLog('sync', 'Auth → PLAY');
-    } else if (!session.isPlaying && !video.paused) {
-      video.pause();
+    } else if (!session.isPlaying && !player.isPaused()) {
+      player.pause();
       addLog('sync', 'Auth → PAUSE');
     }
 
     // 3. Sequence-based command sync (seek/restart)
     if (session.sequenceNumber > lastSequenceRef.current) {
       const expected = calculateExpectedPosition();
-      const currentDrift = Math.round((video.currentTime - expected) * 1000);
+      const currentDrift = Math.round((player.getCurrentTime() - expected) * 1000);
 
       if (Math.abs(currentDrift) > 300) {
         addLog('sync', `Seq ${session.sequenceNumber}: Hard seek → ${expected.toFixed(2)}s`);
-        video.currentTime = expected;
+        player.seek(expected);
         triggerCooldown(3000);
       }
       lastSequenceRef.current = session.sequenceNumber;
     }
-  }, [session, isMounted, calculateExpectedPosition, triggerCooldown]);
+  }, [session, isMounted, videoType, ytPlayer, calculateExpectedPosition, triggerCooldown]);
 
   // ── Heartbeat & Drift Correction Loop (250ms) ─────────────────────
   useEffect(() => {
     const interval = setInterval(() => {
-      if (!videoRef.current || !session) return;
-      const video = videoRef.current;
+      if (!session || !player.isReady()) return;
 
       // 1. Calculate expected position
       const expected = calculateExpectedPosition();
       setExpectedPos(expected);
 
       // 2. Compute drift
-      const currentDrift = Math.round((video.currentTime - expected) * 1000);
+      const currentDrift = Math.round((player.getCurrentTime() - expected) * 1000);
       setDrift(currentDrift);
 
       // 3. Send heartbeat to server
-      let bufferedEnd = 0;
-      if (video.buffered.length > 0) {
-        bufferedEnd = video.buffered.end(video.buffered.length - 1);
-      }
+      const bufferedEnd = player.getBufferedEnd();
 
       let state: 'playing' | 'paused' | 'buffering' = 'paused';
-      if (video.seeking || video.readyState < 3) {
+      if (player.isBufferingOrSeeking()) {
         state = 'buffering';
-      } else if (!video.paused) {
+      } else if (!player.isPaused()) {
         state = 'playing';
       }
 
       sendHeartbeat({
         clientId,
-        currentPosition: video.currentTime,
+        currentPosition: player.getCurrentTime(),
         buffered: bufferedEnd,
         playbackState: state,
         latency,
         timestamp: Date.now(),
-        duration: video.duration || undefined,
+        duration: player.getDuration() || undefined,
       });
       setHeartbeatCount(prev => prev + 1);
 
@@ -155,13 +382,8 @@ export default function DisplayView({ clientId }: DisplayViewProps) {
         return;
       }
 
-      if (video.seeking) {
-        setSyncStatus('seeking');
-        return;
-      }
-
-      if (video.readyState < 3) {
-        setSyncStatus('buffering');
+      if (player.isBufferingOrSeeking()) {
+        setSyncStatus(state === 'buffering' ? 'buffering' : 'seeking');
         return;
       }
 
@@ -169,8 +391,8 @@ export default function DisplayView({ clientId }: DisplayViewProps) {
 
       if (absDrift < 150) {
         // Level 0: In Sync — no correction needed
-        if (video.playbackRate !== 1.0) {
-          video.playbackRate = 1.0;
+        if (player.getPlaybackRate() !== 1.0) {
+          player.setPlaybackRate(1.0);
           setPlaybackRate(1.0);
         }
         setSyncStatus('in-sync');
@@ -178,19 +400,19 @@ export default function DisplayView({ clientId }: DisplayViewProps) {
         // Level 1: Soft Sync — adjust playback rate
         setSyncStatus('soft');
         const newRate = currentDrift > 0 ? 0.95 : 1.05;
-        video.playbackRate = newRate;
+        player.setPlaybackRate(newRate);
         setPlaybackRate(newRate);
       } else {
         // Level 2: Hard Sync — seek directly
         setSyncStatus('hard');
         addLog('warning', `Drift ${currentDrift}ms → Hard seek to ${expected.toFixed(2)}s`);
-        video.currentTime = expected;
+        player.seek(expected);
         triggerCooldown(4000);
       }
     }, 250);
 
     return () => clearInterval(interval);
-  }, [session, latency, calculateExpectedPosition]);
+  }, [session, latency, videoType, ytPlayer, calculateExpectedPosition]);
 
   if (!isMounted) {
     return (
@@ -239,10 +461,15 @@ export default function DisplayView({ clientId }: DisplayViewProps) {
 
   return (
     <div className="relative w-full h-screen bg-black overflow-hidden flex flex-col justify-center items-center">
+      {/* YouTube Player Element */}
+      <div className={`w-full h-full ${videoType === 'youtube' ? 'block' : 'hidden'}`}>
+        <div id="yt-player-placeholder" className="w-full h-full pointer-events-none" />
+      </div>
+
       {/* HTML5 Video Element */}
       <video
         ref={videoRef}
-        className="w-full h-full object-contain pointer-events-none"
+        className={`w-full h-full object-contain pointer-events-none ${videoType === 'html5' ? 'block' : 'hidden'}`}
         playsInline
         muted={isMuted}
         loop={false}
@@ -267,7 +494,7 @@ export default function DisplayView({ clientId }: DisplayViewProps) {
         <button
           onClick={() => {
             setIsMuted(false);
-            if (videoRef.current) videoRef.current.muted = false;
+            player.mute(false);
           }}
           className="absolute top-4 left-4 z-50 bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold px-4 py-2 rounded-xl text-xs shadow-lg flex items-center gap-2 transition-all"
         >
@@ -327,8 +554,8 @@ export default function DisplayView({ clientId }: DisplayViewProps) {
           <div className="flex justify-between border-b border-slate-900 pb-1.5">
             <span className="text-slate-500 uppercase">Local Position</span>
             <span className="text-slate-200 font-bold">
-              {formatTime(videoRef.current?.currentTime || 0)}
-              <span className="text-[10px] text-slate-500 hidden sm:inline"> ({(videoRef.current?.currentTime || 0).toFixed(2)}s)</span>
+              {formatTime(player.getCurrentTime())}
+              <span className="text-[10px] text-slate-500 hidden sm:inline"> ({player.getCurrentTime().toFixed(2)}s)</span>
             </span>
           </div>
 
@@ -394,8 +621,8 @@ export default function DisplayView({ clientId }: DisplayViewProps) {
           <div className="flex justify-between text-[9px] text-slate-500 uppercase">
             <span>Buffer Health</span>
             <span>
-              {videoRef.current && videoRef.current.buffered.length > 0
-                ? `${(videoRef.current.buffered.end(videoRef.current.buffered.length - 1) - videoRef.current.currentTime).toFixed(1)}s`
+              {player.isReady()
+                ? `${Math.max(0, player.getBufferedEnd() - player.getCurrentTime()).toFixed(1)}s`
                 : '0.0s'}
             </span>
           </div>
@@ -405,8 +632,8 @@ export default function DisplayView({ clientId }: DisplayViewProps) {
               style={{
                 width: `${Math.min(
                   100,
-                  videoRef.current && videoRef.current.buffered.length > 0
-                    ? ((videoRef.current.buffered.end(videoRef.current.buffered.length - 1) - videoRef.current.currentTime) / 20) * 100
+                  player.isReady()
+                    ? ((player.getBufferedEnd() - player.getCurrentTime()) / 20) * 100
                     : 0
                 )}%`,
               }}
