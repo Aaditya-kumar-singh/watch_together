@@ -6,20 +6,20 @@ export const PREDEFINED_VIDEOS: VideoInfo[] = [
   {
     id: 'big-buck-bunny',
     title: 'Big Buck Bunny',
-    url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+    url: 'https://cdn.jsdelivr.net/npm/big-buck-bunny-1080p@0.0.6/video.mp4',
     duration: 596
   },
   {
     id: 'sintel',
-    title: 'Sintel',
-    url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4',
-    duration: 888
+    title: 'Sintel Trailer',
+    url: 'https://media.w3.org/2010/05/sintel/trailer_hd.mp4',
+    duration: 52
   },
   {
-    id: 'tears-of-steel',
-    title: 'Tears of Steel',
-    url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4',
-    duration: 734
+    id: 'oceans',
+    title: 'Oceans (VideoJS)',
+    url: 'https://vjs.zencdn.net/v/oceans.mp4',
+    duration: 46
   }
 ];
 
