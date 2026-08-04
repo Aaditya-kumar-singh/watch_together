@@ -1,12 +1,9 @@
 {
   "name": "dual-app-video-sync",
   "private": true,
-  "workspaces": [
-    "apps/*"
-  ],
   "scripts": {
-    "dev:server": "npm run dev --workspace=apps/server",
-    "dev:web": "npm run dev --workspace=apps/web",
+    "dev:server": "cd apps/server && npm run dev",
+    "dev:web": "cd apps/web && npm run dev",
     "dev": "npx concurrently -k -p \"[{name}]\" -n \"Server,Web\" -c \"cyan,magenta\" \"npm run dev:server\" \"npm run dev:web\""
   },
   "devDependencies": {
