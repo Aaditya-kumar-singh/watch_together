@@ -102,6 +102,7 @@ export default function DisplayView({ clientId }: DisplayViewProps) {
             modestbranding: 1,
             iv_load_policy: 3,
             enablejsapi: 1,
+            origin: window.location.origin,
           },
           events: {
             onReady: (event: any) => {
@@ -310,7 +311,10 @@ export default function DisplayView({ clientId }: DisplayViewProps) {
     if (videoType === 'html5' && videoRef.current) {
       const video = videoRef.current;
       const currentSrc = video.src;
-      if (session.selectedVideo && !currentSrc.includes(session.selectedVideo.url)) {
+      // Prevent assigning YouTube URLs to HTML5 video element due to state race conditions
+      const isActuallyYoutube = session.selectedVideo?.url ? !!getYoutubeVideoId(session.selectedVideo.url) : false;
+      
+      if (!isActuallyYoutube && session.selectedVideo && !currentSrc.includes(session.selectedVideo.url)) {
         addLog('info', `Loading video: ${session.selectedVideo.title}`);
         video.src = session.selectedVideo.url;
         video.load();
