@@ -103,6 +103,7 @@ export default function DisplayView({ clientId }: DisplayViewProps) {
             iv_load_policy: 3,
             enablejsapi: 1,
             origin: window.location.origin,
+            playsinline: 1,
           },
           events: {
             onReady: (event: any) => {
