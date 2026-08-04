@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -12,10 +12,31 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+export const viewport: Viewport = {
+  themeColor: "#0f172a", // slate-900 to match the background
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+};
+
 export const metadata: Metadata = {
-  title: "Video Sync — Real-Time Multi-Display Synchronization",
+  title: "Watch Together | Multi-Display Video Sync",
   description:
     "A production-inspired real-time synchronization platform that maintains a single authoritative playback timeline while multiple display clients continuously synchronize under varying network conditions.",
+  keywords: ["video sync", "real-time", "socket.io", "watch party", "multi-display"],
+  authors: [{ name: "Aaditya Kumar Singh" }],
+  openGraph: {
+    title: "Watch Together | Multi-Display Video Sync",
+    description: "A production-inspired real-time synchronization platform for multiple displays.",
+    url: "https://watch-together.com",
+    siteName: "Watch Together",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Watch Together | Multi-Display Video Sync",
+    description: "A production-inspired real-time synchronization platform for multiple displays.",
+  },
 };
 
 export default function RootLayout({
